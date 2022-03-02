@@ -1,0 +1,30 @@
+Hi Daniel,
+
+So you're aware, I've been able to make this work; as mtls is not supported out of the box for some reason.
+Also, there isn't any wolfSSL documentation on getting mtls to work.
+Here is what needs to be done to get it to work
+
+Build libcurl as recommended;
+Build wolfssl as recommended;
+Create a function to install the trusted certificates in the wolfSSL context:
+
+* CURLcode HTTP_wolfSSL_ctx_callback(CURL * curl, void * wolfSSLctx, void * arg)
+* This function calls wolfSSL_CTX_load_verify_buffer
+* This function also calls wolfSSL_CTX_set_cipher_list (if req'd)
+* This function calls wolfSSL_CTX_set_verify to change the verification callback to the custom function below
+
+Create a function that performs certificate verification from the server:
+
+* int HTTP_wolfSSL_cert_verify_callback(int preverify_ok, WOLFSSL_X509_STORE_CTX * ctx)
+* Use wolfSSL_X509 calls to verify what you want (e.g., subject name, issuer, start date, end date)
+
+Inject the ctx_callback into cURL (the HTTP_wolfSSL_ctx_callback over-writes the standard wolfSSL_ctx_callback):
+
+* (void)curl_easy_setopt(curl, CURLOPT_SSL_CTX_FUNCTION, HTTP_wolfSSL_ctx_callback);
+
+Then you can perform your curl call.
+
+I thought you would like to document this in case someone else tries to do this.
+
+Cheers --
+Ray
